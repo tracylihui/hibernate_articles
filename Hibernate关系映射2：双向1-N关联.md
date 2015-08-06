@@ -1,0 +1,106 @@
+title: Hibernate关系映射2：双向1-N关联
+date: 2015-07-07 15:59:57
+categories: Hibernate
+tags: [Hibernate,关系映射]
+---
+我最近在复习一下关于Hibernate关系映射的知识，看了书本的介绍以及视频。这几篇博客都是对学到知识的一点总结。当然，这些这是最基本的能够实现关联关系的配置，在实际的使用中，还有很多参数需要根据情况来设置。但也算是对以后开发过程中遇到遗忘的地方可以进行查阅。
+
+在本文中使用的Demo也都已经上传到github中，里边有详细的运行说明。
+[Hibernate关系映射1：单向N-1关联](http://tracylihui.github.io/2015/07/07/Hibernate%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%841%EF%BC%9A%E5%8D%95%E5%90%91N-1%E5%85%B3%E8%81%94/)
+[Hibernate关系映射2：双向1-N关联](http://tracylihui.github.io/2015/07/07/Hibernate%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%842%EF%BC%9A%E5%8F%8C%E5%90%911-N%E5%85%B3%E8%81%94/)
+[Hibernate关系映射3：双向1-1关联](http://tracylihui.github.io/2015/07/07/Hibernate%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%843%EF%BC%9A%E5%8F%8C%E5%90%911-1%E5%85%B3%E8%81%94/)
+[Hibernate关系映射4：N-N关联](http://tracylihui.github.io/2015/07/08/Hibernate%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%844%EF%BC%9AN-N%E5%85%B3%E8%81%94/)
+
+Github地址：[HibernateRelationMapping](https://github.com/tracylihui/HibernateRelationMapping)
+<!--more-->
+#双向1-N关联
+---
+对于1-N关联，Hibernate推荐使用双向关联，而且不要让1的一端控制关联关系，而使用N的一端控制关联关系。
+
+双向的N-1关联与1-N关联是完全相同的两种情形。两端都需要增加对关联属性的访问，N的一端增加引用到关联实体的属性，1的一端增加集合属性，集合元素为关联实体。
+##域模型
+从 Order 到 Customer 的多对一双向关联需要在Order 类中定义一个 Customer 属性, 而在 Customer 类中需定义存放 Order 对象的集合属性
+![图1](http://7xk5ao.com1.z0.glb.clouddn.com/mysql3.jpg)
+##关系数据模型
+ORDERS 表中的 CUSTOMER_ID 参照 CUSTOMER 表的主键
+![图2](http://7xk5ao.com1.z0.glb.clouddn.com/mysql4.jpg)
+##Notice
+当Session从数据库中加载Java集合时，创建的是Hibernate内置集合类的实例，因此，在持久化类中定义集合属性时，必须把属性声明为Java接口
+- Hibernate的内置集合类具有集合代理功能，支持延迟检索策略
+- 事实上，Hibernate的内置集合类封装了JDK中的集合类，这使得Hibernate能够对缓存中的集合对象进行脏检查，按照集合对象的状态来同步更新数据库。
+
+在定义集合属性时，通常把它初始化为集合实现类的一个实例，这样可以提高程序的健壮性，避免应用程序访问取值为null的集合的方法。
+
+例如：`private Set<Order> orders = new HashSet<Order>();`
+#Demo
+---
+##实体对象
+```java
+public class Customer {
+	private Integer customerId;
+	private String customerName;
+	private Set<Order> orders = new HashSet<Order>();
+	//省去get和set
+}
+public class Order {
+	private Integer orderId;
+	private String orderName;
+	private Customer customer;
+//省去get和set
+}
+```
+##Customer.hbm.xml
+```xml
+<hibernate-mapping package="com.lihui.hibernate.double_n_1">
+    <class name="Customer" table="CUSTOMERS">
+        <id name="customerId" type="java.lang.Integer">
+            <column name="CUSTOMER_ID" />
+            <generator class="native" />
+        </id>
+        <property name="customerName" type="java.lang.String">
+            <column name="CUSTOMER_NAME" />
+        </property>
+        <set name="orders"  inverse="true">
+        	<key column="CUSTOMER_ID"></key>
+        	<one-to-many class="Order"/>
+        </set>
+    </class>
+</hibernate-mapping>
+```
+###set
+name属性: 设定待映射的持久化类的属性的
+
+inverse 属性：
+- 在hibernate中通过对 inverse 属性的来决定是由双向关联的哪一方来维护表和表之间的关系。 inverse = false 的为主动方，inverse = true 的为被动方, 由主动方负责维护关联关系。在没有设置 inverse=true 的情况下，父子两边都维护父子关系
+- 在 1-N 关系中，将 N 方设为主控方将有助于性能改善(如果要国家元首记住全国人民的名字，不是太可能，但要让全国人民知道国家元首，就容易的多)
+- 在 1-N 关系中，若将 1 方设为主控方,会额外多出 update 语句。插入数据时无法同时插入外键列，因而无法为外键列添加非空约束.
+
+order-by 属性：
+- 如果设置了该属性, 当 Hibernate 通过 select 语句到数据库中检索集合对象时, 利用 order by 子句进行排序
+- order-by 属性中还可以加入 SQL 函数
+例如：
+![图3](http://7xk5ao.com1.z0.glb.clouddn.com/mysql5.jpg)
+
+###key
+设定与所关联的持久化类对应的表的外键
+- column: 指定关联表的外键名
+
+###one-to-many
+设定集合属性中所关联的持久化类
+- class: 指定关联的持久化类的类名
+
+##Order.hbm.xml
+```xml
+<hibernate-mapping package="com.lihui.hibernate.double_n_1">
+    <class name="Order" table="ORDERS">
+        <id name="orderId" type="java.lang.Integer">
+            <column name="ORDER_ID" />
+            <generator class="native" />
+        </id>
+        <property name="orderName" type="java.lang.String">
+            <column name="ORDER_NAME" />
+        </property>
+        <many-to-one name="customer" class="Customer" cascade="all" column="CUSTOMER_ID"></many-to-one>
+    </class>
+</hibernate-mapping>  
+```
