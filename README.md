@@ -1,5 +1,6 @@
-# 介绍
-文章内容是对Hibernate高级特性的总结和学习，包含的内容为：
+# Hibernate 高级教程
+
+文章内容是对 Hibernate 高级特性的总结和学习，包含的内容为：
 
 
 [Hibernate关系映射1：单向N-1关联](http://tracylihui.github.io/2015/07/07/Hibernate%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%841%EF%BC%9A%E5%8D%95%E5%90%91N-1%E5%85%B3%E8%81%94/)
@@ -24,5 +25,6 @@
 
 主要为对Hibernate开发中比较重要的内容进行学习。
 
-#适用人群
+# 适用人群
+
 首先为Java开发人员，对Hibernate框架有一定的基础。
