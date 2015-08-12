@@ -1,8 +1,3 @@
-title: Hibernate：get和load
-date: 2015-07-20 22:22:14
-categories: Hibernate
-tags: Hibernate
----
 当我们从数据库得到一个对象的时候，我们通常有两种比较简单的方式，一种是通过session的get()方法，另一种是load()方法，但其实这两种是有区别的。写这篇文章的目的并不是为了通过Demo去给读者演示这两者到底是有什么区别，只是一篇总结性的文章。告诉自己需要记住Hibernate的这个点。
 
 这两种在查询性能上是有一定区别的，但在项目中更倾向的肯定是load()方法。

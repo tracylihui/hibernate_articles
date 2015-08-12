@@ -1,8 +1,3 @@
-title: Hibernate：检索策略的学习1
-date: 2015-07-10 13:01:54
-categories: Hibernate
-tags: [Hibernate,检索策略]
----
 #概述
 ---
 检索数据，也就是查询数据是在一个系统中必不可少的一个功能。检索数据时的2个问题：

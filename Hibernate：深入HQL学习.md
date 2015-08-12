@@ -1,8 +1,3 @@
-title: Hibernate：深入HQL学习
-date: 2015-07-08 21:07:35
-categories: Hibernate
-tags: [Hibernate,HQL]
----
 #导读
 ---
 HQL(Hibernate Query Language) 是面向对象的查询语言, 它和 SQL 查询语言有些相似. 在 Hibernate 提供的各种检索方式中, HQL 是使用最广的一种检索方式. 它有如下功能:

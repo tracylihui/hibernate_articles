@@ -1,8 +1,3 @@
-title: 'Hibernate：缓存机制的学习'
-date: 2015-07-20 14:47:52
-categories: Hibernate
-tags: [Hibernate,缓存]
----
 Hibernate中会经常用到set等集合来表示1-N的关系。比如，我有Customer和Order两个对象。其中，在Customer中有一个Order的set集合，表示在一个顾客可以拥有多个Order，而在Order对象中存在了一个Customer的对象，表示这个Order是哪个顾客下的单。这个算是比较典型的双向1-N关联。
 
 这给我们带来了很大的好处，当我得到了Customer对象的时候，我们可以很方便的将与其相关联的Order集合查询出来，这也非常符合我们的实际业务，毕竟我们不可能给这个Cutomer对象别人的Order吧，这既不安全，而且对Customer的普通顾客来说，并无卵用。所以我们不得不说Hibernate的ORM做的很好，但凡事都有但是（要是没有但是，也就没有写这篇文章的必要了）。
