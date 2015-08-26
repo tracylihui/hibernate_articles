@@ -3,31 +3,37 @@
 Hibernate 支持两种锁机制：即通常所说的 “悲观锁（ Pessimistic Locking ）”和 “乐观锁（ Optimistic Locking ）” 。
 <!--more-->
 
-#悲观锁
+# 悲观锁
 ---
 悲观锁（ Pessimistic Locking ），正如其名，它指的是对数据被外界（包括本系统当前的其他事务，以及来自外部系统的事务处理）修改持保守态度，因此，在整个数据处理过程中，将数据处于锁定状态。悲观锁的实现，往往依靠数据库提供的锁机制（也只有数据库层提供的锁机制才能真正保证数据访问的排他性，否则，即使在本系统中实现了加锁机制，也无法保证外部系统不会修改数据）。
 
 一个典型的倚赖数据库的悲观锁调用：
+
 ```sql
 select * from account where name=”Erica” for update
 ```
+
 这条 sql 语句锁定了 account 表中所有符合检索条件（name=”Erica”）的记录。本次事务提交之前（事务提交时会释放事务过程中的锁），外界无法修改这些记录。Hibernate 的悲观锁，也是基于数据库的锁机制实现。
 
 下面的代码实现了对查询记录的加锁：
+
 ```java
 String hqlStr ="from TUser as user where user.name='Erica'";
 Query query = session.createQuery(hqlStr);
 query.setLockMode("user",LockMode.UPGRADE); // 加锁
 List userList = query.list();// 执行查询，获取数据
 ```
+
 `query.setLockMode`对查询语句中，特定别名所对应的记录进行加锁（我们为TUser 类指定了一个别名 “user” ），这里也就是对返回的所有 user 记录进行加锁。
 
 观察运行期 Hibernate 生成的 SQL 语句：
+
 ```sql
 select tuser0_.id as id, tuser0_.name as name, tuser0_.group_id
 as group_id, tuser0_.user_type as user_type, tuser0_.sex as sex
 from t_user tuser0_ where (tuser0_.name='Erica' ) for update
 ```
+
 这里 Hibernate 通过使用数据库的 for update 子句实现了悲观锁机制。
 
 Hibernate 的加锁模式有：
@@ -40,14 +46,17 @@ Hibernate 的加锁模式有：
 - LockMode. UPGRADE_NOWAIT ： Oracle 的特定实现，利用 Oracle 的 for update nowait 子句实现加锁。
 
 上面这两种锁机制是我们在应用层较为常用的，加锁一般通过以下方法实现：
+
 ```java
 Criteria.setLockMode
 Query.setLockMode
 Session.lock
 ```
+
 **注意，只有在查询开始之前（也就是 Hiberate 生成 SQL 之前）设定加锁，才会真正通过数据库的锁机制进行加锁处理**，否则，数据已经通过不包含 for update 子句的 Select SQL 加载进来，所谓数据库加锁也就无从谈起。
 
-#乐观锁
+# 乐观锁
+
 相对悲观锁而言，乐观锁（ Optimistic Locking ）机制采取了更加宽松的加锁机制。悲观锁大多数情况下依靠数据库的锁机制实现，以保证操作最大程度的独占性。但随之而来的就是数据库性能的大量开销，特别是对长事务而言，这样的开销往往无法承受。
 
 如一个金融系统，当某个操作员读取用户的数据，并在读出的用户数据的基础上进行修改时如更改用户帐户余额），如果采用悲观锁机制，也就意味着整个操作过程中（从操作员读出数、开始修改直至提交修改结果的全过程，甚至还包括操作员中途去煮咖啡的时间），数据库记录始终处于加锁状态，可以想见，如果面对几百上千个并发，这样的情况将导致怎样的后果。乐观锁机制在一定程度上解决了这个问题。乐观锁，大多是基于数据版本（ Version ）记录机制实现。何谓数据版本？**即为数据增加一个版本标识，在基于数据库表的版本解决方案中，一般是通过为数据库表增加一个 “version” 字段来实现**。
@@ -68,6 +77,7 @@ Hibernate 中可以通过 class 描述符的 optimistic-lock 属性结合 versio
 
 现在，我们为之前示例中的 TUser 加上乐观锁机制。
 （1）首先为 TUser 的 class 描述符添加 optimistic-lock 属性：
+
 ```xml
 <hibernate-mapping>
 <class name="org.hibernate.sample.TUser" table="t_user" dynamic-update="true"
@@ -76,6 +86,7 @@ dynamic-insert="true" optimistic-lock="version">
 </class>
 </hibernate-mapping>
 ```
+
 optimistic-lock 属性有如下可选取值：
 - none：无乐观锁
 - version：通过版本机制实现乐观锁
@@ -85,6 +96,7 @@ optimistic-lock 属性有如下可选取值：
 **其中通过 version 实现的乐观锁机制是 Hibernate 官方推荐的乐观锁实现**，同时也是 Hibernate 中，目前唯一在数据对象脱离 Session 发生修改的情况下依然有效的锁机制。因此，一般情况下，我们都选择 version 方式作为 Hibernate 乐观锁实现机制。
 
 （2）添加一个 Version 属性描述符
+
 ```xml
 <hibernate-mapping>
 <class name="org.hibernate.sample.TUser" table="t_user" dynamic-update="true" dynamic-insert="true"
@@ -98,9 +110,11 @@ optimistic-lock="version">
 </class>
 </hibernate-mapping>
 ```
+
 注意 version 节点必须出现在 ID 节点之后。这里我们声明了一个 version 属性，用于存放用户的版本信息，保存在 TUser 表的version 字段中。
 
 此时如果我们尝试编写一段代码，更新 TUser 表中记录数据，如：
+
 ```java
 Criteria criteria = session.createCriteria(TUser.class);
 criteria.add(Expression.eq("name","Erica"));
@@ -110,7 +124,9 @@ Transaction tx = session.beginTransaction();
 user.setUserType(1); // 更新 UserType 字段
 tx.commit();
 ```
+
 每次对 TUser 进行更新的时候，我们可以发现，数据库中的 version 都在递增。而如果我们尝试在 tx.commit 之前，启动另外一个 Session ，对名为 Erica 的用户进行操作，以模拟并发更新时的情形：
+
 ```java
 Session session= getSession();
 Criteria criteria = session.createCriteria(TUser.class);
@@ -128,4 +144,5 @@ tx2.commit();
 user.setUserType(1);
 tx.commit();
 ```
+
 执行以上代码，代码将在 tx.commit() 处抛出 StaleObjectStateException 异常，并指出版本检查失败，当前事务正在试图提交一个过期数据。通过捕捉这个异常，我们就可以在乐观锁校验失败时进行相应处理。

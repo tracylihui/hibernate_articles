@@ -1,4 +1,4 @@
-#概述
+# 概述
 ---
 检索数据，也就是查询数据是在一个系统中必不可少的一个功能。检索数据时的2个问题：
 1. 不浪费内存：例如，Customer和Order是双向1-N的关系。当 Hibernate 从数据库中加载 Customer 对象时， 如果同时加载所有关联的 Order 对象， 而程序实际上仅仅需要访问 Customer 对象， 那么这些关联的 Order 对象就白白浪费了许多内存。
@@ -11,9 +11,11 @@
 
 第一部分讲解了类级别的检索策略以及1-N和N-N的检索策略，在第二部分中将学习N-1和1-1的检索策略，并对检索策略进行总结。
 <!--more-->
-#类级别的检索策略
+
+# 类级别的检索策略
 ---
-##知识点
+## 知识点
+
 类级别可选的检索策略包括立即检索和延迟检索， 默认为延迟检索。
 - 立即检索: 立即加载检索方法指定的对象；
 - 延迟检索: 延迟加载检索方法指定的对象。在使用具体的属性时，再进行加载。
@@ -23,10 +25,15 @@
 如果程序加载一个对象的目的是为了访问它的属性，可以采取立即检索；如果程序加载一个持久化对象的目的是仅仅为了获得它的引用，可以采用延迟检索，但**需要注意懒加载异常**（LazyInitializationException：简单理解该异常就是Hibernate在使用延迟加载时，并没有将数据实际查询出来，而只是得到了一个代理对象，当使用属性的时候才会去查询，而如果这个时候session关闭了，则会报该异常）！
 
 下面通过一个例子来进行讲解：
-##Demo
+
+## Demo
+
 在该Demo中，我们只需要使用一个Customer的对象即可，其中包含了id，name等属性。
-###延迟检索
+
+### 延迟检索
+
 首先我们来测试一下<class>元素的lazy属性为true的情况，也就是默认情况（不设置）。
+
 ```java
 public class HibernateTest {
 
@@ -59,8 +66,11 @@ public class HibernateTest {
 	}
 }
 ```
+
 看一下上面的代码，该代码是利用Junit进行测试（关于Junit的知识在这不多说，并不是重点）。其中init方法是对SessionFactory、Session等进行初始化，destroy方法是进行关闭。
+
 当我们运行testClassLevelStrategy()方法时，会得到以下输出结果：
+
 ```
 class com.atguigu.hibernate.strategy.Customer_$$_javassist_1
 1
@@ -74,11 +84,15 @@ Hibernate:
         customer0_.CUSTOMER_ID=?
 AA
 ```
+
 通过控制台的输出结果，我们可以清楚的看到，当我们执行`session.load(Customer.class, 1)`方法时，Hibernate并没有发送SQL语句，而只是返回了一个对象，通过调用getClass()方法，可以看到该对象`class com.atguigu.hibernate.strategy.Customer_$$_javassist_1`是一个代理对象，并且当调用`customer.getCustomerId()`获取ID的时候，也没有发送SQL语句；当我们这个再调用`customer.getCustomerName()`方法来得到name的时候，这个时候才发送了SQL语句进行真正的查询，并且WHERE条件中带上的就是ID。
 
 如果我们在`System.out.println(customer.getCustomerName());`语句前插入`session.close()`将Session关闭，就能看到之前上文中提到的懒加载异常。
-###立即检索
+
+### 立即检索
+
 为了让Customer类可以立即检索，我们要修改Customer.hbm.xml文件，在<class>标签中加入lazy="false"。
+
 ```xml
 <hibernate-mapping package="com.atguigu.hibernate.strategy">
 
@@ -90,7 +104,9 @@ AA
 		</id>
     ...
 ```
+
 这个时候，我们再运行之前的单元测试代码，控制台会得到以下输出结果：
+
 ```
 Hibernate:
     select
@@ -104,8 +120,11 @@ class com.atguigu.hibernate.strategy.Customer
 1
 AA
 ```
+
 我们可以看到，当调用load方法时，会发送SQL语句，并且得到的不再是代理对象。这个时候就算我们在输出name属性之前将session关闭，也不会报错。
-##小结
+
+## 小结
+
 **上文中对Hibernate的类级别的检索策略进行了总结，当然这些是建立在有一定基础的前提下。**
 需要注意的是：
 -  无论<class>元素的lazy 属性是true 还是false，Session 的get() 方法及Query 的list() 方法在类级别总是使用立即检索策略。
@@ -114,9 +133,10 @@ AA
   - Hibernate 创建代理类实例时，仅初始化其 OID 属性；
   - 在应用程序第一次访问代理类实例的非 OID 属性时, Hibernate 会初始化代理类实例。
 
-#1-N和N-N的检索策略
+# 1-N和N-N的检索策略
 ---
-##知识点
+## 知识点
+
 我在之前的博客中对1-N和N-N有过学习，所以我假设读者已经了解了Hibernate中关于1-N和N-N的映射。我们建立了Customer与Order的1-N关联关系，表示一个顾客可以有多个订单。
 
 我们在映射文件中，用<set>元素来配置1-N关联以及N-N关联关系。<set>元素有lazy、fetch和batch-size属性。
@@ -133,10 +153,15 @@ AA
 |true,extra<br> or extra|未设置<br>(取默认值select)| lazy属性决定采用的检索策略，即决定初始化orders集合的时机。fetch属性为select，意味<br>着通过select语句来初始化orders的集合，形式为SELECT * FROM orders WHERE customer<br>_id IN (1,2,3,4)|
 |true,extra<br> or extra|subselect| lazy属性决定采用的检索策略，即决定初始化orders集合的时机。fetch属性为subselect，意味<br>着通过subselect语句来初始化orders的集合，形式为SELECT * FROM orders WHERE<br> customer_id IN (SELECT id FROM customers)|
 |true|join| 采采用迫切左外连接策略|
-##Lazy
+
+## Lazy
+
 我们现在开始研究一下关于<set>元素的lazy属性。
-###Demo
+
+### Demo
+
 首先我们看一下延迟检索，也就是<set>属性的lazy为true或者不设置的情况下：
+
 ```java
 @Test
 public void testOne2ManyLevelStrategy() {
@@ -146,7 +171,9 @@ public void testOne2ManyLevelStrategy() {
 		System.out.println(customer.getOrders().size());
 }
 ```
+
 下面是控制的输出结果
+
 ```
 Hibernate:
     select
@@ -171,6 +198,7 @@ Hibernate:
         orders0_.CUSTOMER_ID=?
 3
 ```
+
 从结果中可以明显的看出，Hibernate使用了延迟检索。其中的orders并没有初始化，而是返回了一个集合代理对象。当我们通过customer.getOrders().size()这段代码真正要使用orders集合的时候，才发送SQL语句进行查询。
 
 在延迟检索（lazy属性值为true）集合属性时，Hibernate在以下情况下初始化集合代理类实例：
@@ -185,6 +213,7 @@ Hibernate:
 该取值与true类似，主要区别是增强延迟检索策略能够进一步延迟Customer对象的orders集合代理实例的初始化时机。
 
 首先我们将<set>元素中的lazy设为extra。我们同样的执行上文中的单元测试代码， 得到以下结果：
+
 ```
 Hibernate:
     select
@@ -205,6 +234,7 @@ Hibernate:
         CUSTOMER_ID =?
 3
 ```
+
 我们观察第二个SQL语句。我们发现他并没有对orders进行初始化，而是通过使用一个count()函数。extra取值为增强的延迟检索，该取值会尽可能的延迟集合初始化的时机。
 
 例如：当我们将lazy设置为true（延迟检索），而我们调用order.size()方法的时候，这个时候就会通过SQL将orders集合初始化。但现在我们用extra这个属性，发现我们调用orders的size方法，并没有初始化，而是通过了一个count函数。
@@ -218,11 +248,17 @@ Hibernate:
 但其实我们在实际的开发过程中，当我们要用到size或者contains等方法的时候，基本上代表我们就要用到集合部分的属性。如果我们选用extra的话，反倒会多发送SQL语句。
 
 关于extra的其他点大家可以自己进行一些测试，比较简单方便。
-##BatchSize
+
+## BatchSize
+
 <set> 元素有一个batch-size 属性，用来为延迟检索策略或立即检索策略设定批量检索的数量。批量检索能减少 SELECT 语句的数目，提高延迟检索或立即检索的运行性能。
-###Demo
+
+### Demo
+
 首先说一下这个Demo中用到的数据的数据，Customers表中共有4条数据。而我们的lazy属性设为true，即采用延迟加载策略。
+
 我们看一下下面的代码：
+
 ```java
 @Test
 public void testSetBatchSize() {
@@ -241,6 +277,7 @@ public void testSetBatchSize() {
 好了，现在我们修改<set>元素，在里边加入`batch-size="4"`，所以现在的<set>元素的代码为`<set name="orders" table="ORDERS" inverse="true" lazy="true" batch-size="4">`。
 
 我们重新运行单元测试代码，得到结果：
+
 ```
 Hibernate:
     select
@@ -267,8 +304,11 @@ Hibernate:
 3
 0
 ```
+
 我们看到这个时候只有2条SQL语句。第一条同样的还是得到customer，而第二条SQL语句直接全部初始化了4个orders集合。这就是batch-size的作用所在。我们可以想到的是，如果我们将batch-size设为2，则是3条SQL语句。**也就是我们上文中提到的批量检索。**
-##Fetch
+
+## Fetch
+
 <set>元素的fetch属性是用于确定初始化orders 集合的方式。
 1. 默认值为orders，也就是通过正常的方式来初始化set元素。例如我们在将batch-size例子的时候，我们并没有设置fetch属性（默认即为select），所以我们在初始化orders集合的时候，会发现在SQL语句中是通过`where orders0_.CUSTOMER_ID in (?, ?, ?, ?)`这种方式来进行初始化的。
 2. 可以取值为subselect，我们看名字也能知道大概意思，就是通过子查询的方式来初始化所有的set集合。例如我们设置为subselect后，可看到SQL语句中包含`where orders0_.CUSTOMER_ID in (select customer0_.CUSTOMER_ID from CUSTOMERS customer0_)`。**子查询作为WHERE子句的in的条件出现的，子查询查询1的一端的ID，此时lazy属性是有效的，但batch-size属性失效。**
@@ -278,5 +318,6 @@ Hibernate:
   + HQL查询忽略`fetch="join"`的取值；
 	+ **Query 的list() 方法会忽略映射文件中配置的迫切左外连接检索策略, 而依旧采用延迟加载策略。（这个点之前测试的时候老是忽略掉了）**
 
-#总结
+# 总结
+
 以上就是关于Hibernate检索策略的学习，但并不全。将在下一篇中，对N-1和1-1的检索策略进行学习，并做一个总结。
