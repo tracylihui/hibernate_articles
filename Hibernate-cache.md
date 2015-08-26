@@ -7,7 +7,7 @@ Hibernate中会经常用到set等集合来表示1-N的关系。比如，我有Cu
 关于N+1问题，并不是本文的重点。但关于N+1问题，我们需要知道的是，这个问题会导致SQL语句的增加，也就是要与数据库进行更多的交互，这无疑会给项目以及后台数据库带来影响。
 <!--more-->
 
-#Hibernate缓存
+# Hibernate缓存
 ---
 Hibernate是一个持久化框架，经常需要访问数据库。如果我们能够降低应用程序对物理数据库访问的频次，那会提供应用程序的运行性能。缓存内的数据是对物理数据源中的数据的复制，应用程序运行时先从缓存中读写数据。
 
@@ -29,10 +29,12 @@ Hibernate缓存包括两大类：一级缓存和二级缓存。
 - 绝对不允许出现并发访问的数据，如财务数据，绝对不允许出现并发 　　
 - 与其他应用共享的数据
 
-#Hibernate一级缓存
+# Hibernate一级缓存
 ---
-##Demo
+## Demo
+
 首先看一个非常简单的例子：
+
 ```java
 @Test
 public void test() {
@@ -43,7 +45,9 @@ public void test() {
 	System.out.println(customer2.getCustomerName());
 }
 ```
+
 看一下控制台的输出：
+
 ```
 Hibernate:
     select
@@ -56,9 +60,11 @@ Hibernate:
 Customer1
 Customer1
 ```
+
 我们可以看到，虽然我们调用了两次session的load方法，但实际上只发送了一条SQL语句。我们第一次调用load方法时候，得到了查询结果，然后将结果放到了session的一级缓存中。此时，当我们再次调用load方法，会首先去看缓存中是否存在该对象，如果存在，则直接从缓存中取出，就不会在发送SQL语句了。
 
 但是，我们看一下下面这个例子：
+
 ```java
 @Test
 public void test() {
@@ -72,7 +78,9 @@ public void test() {
 	System.out.println(customer2.getCustomerName());
 }
 ```
+
 我们解释一下上面的代码，在第5、6、7、8行，我们是先将session关闭，然后又重新打开了新的session，这个时候，我们再看一下控制台的输出结果：
+
 ```
 Hibernate:
     select
@@ -93,16 +101,21 @@ Hibernate:
         customer0_.CUSTOMER_ID=?
 Customer1
 ```
+
 我们可以看到，发送了两条SQL语句。其原因是：Hibernate一级缓存是session级别的，所以如果session关闭后，缓存就没了，当我们再次打开session的时候，缓存中是没有了之前查询的对象的，所以会再次发送SQL语句。
 
 我们稍微对一级缓存的知识点进行总结一下，然后再开始讨论关于二级缓存的内容。
-##作用
+
+## 作用
+
 Session的缓存有三大作用：
+
 1. 减少访问数据库的频率。应用程序从缓存中读取持久化对象的速度显然比到数据中查询数据的速度快多了，因此Session的缓存可以提高数据访问的性能。
 2. 当缓存中的持久化对象之间存在循环关联关系时，Session会保证不出现访问对象图的死循环，以及由死循环引起的JVM堆栈溢出异常。
 3. 保证数据库中的相关记录与缓存中的相应对象保持同步。
 
-##小结
+## 小结
+
 - 一级缓存是事务级别的，每个事务(session)都有单独的一级缓存。这一级别的缓存是由Hibernate进行管理，一般情况下无需进行干预。
 - 每个事务都拥有单独的一级缓存不会出现并发问题，因此无须提供并发访问策略。
 - 当应用程序调用Session的save()、update()、saveOrUpdate()、get()或load()，以及调用查询接口的 list()、iterate()(该方法会出现N+1问题，先查id)方法时，如果在Session缓存中还不存在相应的对象，Hibernate就会把该对象加入到第一级缓存中。当清理缓存时，Hibernate会根据缓存中对象的状态变化来同步更新数据库。 Session为应用程序提供了两个管理缓存的方法： evict(Object obj)：从缓存中清除参数指定的持久化对象。 clear()：清空缓存中所有持久化对象,flush():使缓存与数据库同步。
@@ -117,7 +130,9 @@ public void test() {
 	System.out.println(customer2.getCustomerName());
 }
 ```
+
 我们首先是只取出Customer的name属性，然后又尝试着去Load一个Customer对象，看一下控制台的输出：
+
 ```
 Hibernate:
     select
@@ -135,22 +150,27 @@ Hibernate:
         customer0_.CUSTOMER_ID=?
 Customer1
 ```
+
 这一点其实很好理解，我本身就没有查处Customer的所有属性，那我又怎么能给你把所有属性都缓存到这个对象中呢？
 
 我们在讲之前的例子中，提到我们关闭session再打开，这个时候一级缓存就不存在了，所以我们再次查询的时候，会再次发送SQL语句。那么如果要解决这个问题，我们该怎么做？二级缓存可以帮我们解决这个问题。
 
-#Hibernate二级缓存
+# Hibernate二级缓存
+
 Hibernate中没有自己去实现二级缓存，而是利用第三方的。简单叙述一下配置过程，也作为自己以后用到的时候配置的一个参考。
 
 1、我们需要加入额外的二级缓存包，例如EHcache，将其包导入。需要：ehcache-core-2.4.3.jar ， hibernate-ehcache-4.2.4.Final.jar ，slf4j-api-1.6.1.jar
 2、在hibernate.cfg.xml配置文件中配置我们二级缓存的一些属性（此处针对的是Hibernate4）：
+
 ```xml
 <!-- 启用二级缓存 -->
 <property name="cache.use_second_level_cache">true</property>
 <!-- 配置使用的二级缓存的产品 -->
 <property name="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</property>
 ```
+
 3、我们使用的是EHcache，所以我们需要创建一个ehcache.xml的配置文件，来配置我们的缓存信息，这个是EHcache要求的。该文件放到根目录下。
+
 ```xml
 <ehcache>
     <!--  
@@ -219,16 +239,20 @@ Hibernate中没有自己去实现二级缓存，而是利用第三方的。简�
 
 </ehcache>
 ```
+
 在注释中，有一些对变量的解释。
 
 4、开启二级缓存。我们在这里使用的xml的配置方式，所以要在Customer.hbm.xml文件加一点配置信息：
+
 ```xml
 <cache usage="read-only"/>
 ```
+
 注意是在<class>标签内。
 如果是使用注解的方法，在要在Customer这个类中，加入`@Cache(usage=CacheConcurrencyStrategy.READ_ONLY)`这个注解。
 
 5、下面我们再进行一下测试。还是上面的代码：
+
 ```java
 @Test
 public void test() {
@@ -242,6 +266,7 @@ public void test() {
 	System.out.println(customer2.getCustomerName());
 }
 ```
+
 我们可以发现控制台只发出了一条SQL语句。这是我们二级缓存的一个小Demo。
 
 我们的二级缓存是sessionFactory级别的，所以当我们session关闭再打开之后，我们再去查询对象的时候，此时Hibernate会先去二级缓存中查询是否有该对象。
@@ -252,6 +277,7 @@ public void test() {
 
 已经写了这么多了，但好像我们关于缓存的内容还没有讲完。不要着急，再坚持一下，我们的内容不多了。我们还是通过一个例子来引出下一个话题。
 我们说通过二级缓存可以缓存对象，那么我们看一下下面的代码以及输出结果：
+
 ```java
 @Test
 public void test() {
@@ -265,7 +291,9 @@ public void test() {
 	System.out.println(customers2.size());
 }
 ```
+
 控制台的结果：
+
 ```
 Hibernate:
     select
@@ -282,9 +310,10 @@ Hibernate:
         CUSTOMERS customer0_
 3
 ```
+
 我们的缓存好像没有起作用哎？这是为啥？当我们通过list()去查询两次对象的时候，二级缓存虽然会缓存插叙出来的对象，但不会缓存我们的hql查询语句，要想解决这个问题，我们需要用到查询缓存。
 
-#查询缓存
+# 查询缓存
 ---
 在前文中也提到了，我们的一级二级缓存都是对整个实体进行缓存，它不会缓存普通属性，如果想对普通属性进行缓存，则可以考虑使用查询缓存。
 
@@ -302,7 +331,8 @@ Hibernate:
 
 这是因为查询缓存缓存的仅仅是对象的ID，所以首先会通过一条SQL将对象的ID都查询出来，但是当我们后面要得到每个对象的信息的时候，此时又会发送SQL语句，所以如果我们使用查询缓存，一定也要开启二级缓存。
 
-#总结
+# 总结
+
 这些就是自己今晚上研究的关于Hibernate缓存的一些问题，其出发点也是为了自己能够对Hibernate缓存的知识有一定的总结。当然了，下一步还需要深入到缓存是如何实现的这个深度中。
 
 另外PS一句，最近打球打的很累，都感觉自己打的有点乏力了。休息几天再去玩。
