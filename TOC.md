@@ -3,7 +3,7 @@
 - [Hibernate关系映射2：双向1-N关联](1-N.md)
 - [Hibernate关系映射3：双向1-1关联](1-1.md)
 - [Hibernate关系映射4：N-N关联](N-N.md)
-- [Hibernate：深入HQL学习](Hibernate-hql.md)
+- [Hibernate：深入HQL学习](hql.md)
 - [Hibernate：检索策略的学习1](Hibernate-1.md)
 - [Hibernate：检索策略的学习2](Hibernate-2.md)
 - [Hibernate：缓存机制的学习](Hibernate-cache.md)
